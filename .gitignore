@@ -9,6 +9,9 @@ npm-debug.*
 *.mobileprovision
 *.orig.*
 web-build/
+.config.js
+.Home Imgur.js
+.Home Telegram.js
 
 # macOS
 .DS_Store
