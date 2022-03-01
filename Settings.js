@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TextInput,
   Image,
+  ScrollView,
 } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -49,10 +50,10 @@ const Settings = ({ route, navigation }) => {
   let [spinnerVisible, setSpinnerVisibile] = React.useState(false);
 
   return (
-    <View
-      style={{
+    <ScrollView
+      style={{ backgroundColor: "#191919" }}
+      contentContainerStyle={{
         width: "flex",
-        height: "100%",
         backgroundColor: "#191919",
         alignItems: "center",
       }}
@@ -210,7 +211,7 @@ const Settings = ({ route, navigation }) => {
         <TouchableOpacity
           style={{
             marginTop: hp("3%"),
-            marginBottom: "5%",
+            marginBottom: "3%",
             justifyContent: "center",
             alignItems: "center",
           }}
@@ -225,8 +226,88 @@ const Settings = ({ route, navigation }) => {
             source={{ uri: require("./assets/PaypalIcon.svg") }}
           ></Image>
         </TouchableOpacity>
+
+        <View
+          style={{
+            marginBottom: "5%",
+            width: "100%",
+            alignItems: "center",
+            flexDirection: "row",
+            justifyContent: "center",
+          }}
+        >
+          {/*Pulsante dona bitcoin */}
+          <TouchableOpacity
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onPress={async () => {
+              let pay = window.open();
+              pay.location.href =
+                "https://www.bitcoinqrcodemaker.com/pay/?type=2&style=bitcoin&address=bc1q55melfnktuyzjqqygmpzn2urar8sr7vgkzct57";
+            }}
+          >
+            <Image
+              style={{
+                width: winSize.width > 900 ? "70px" : "40px",
+                height: winSize.width > 900 ? "70px" : "40px",
+                resizeMode: "cover",
+              }}
+              source={{ uri: require("./assets/btc.svg.png") }}
+            ></Image>
+          </TouchableOpacity>
+
+          {/*Pulsante dona eth */}
+          <TouchableOpacity
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+              marginLeft: "2%",
+              marginRight: "2%",
+            }}
+            onPress={async () => {
+              let pay = window.open();
+              pay.location.href =
+                "https://www.bitcoinqrcodemaker.com/pay/?type=2&style=ethereum&address=0x412a9128F56F1004BbE2de093C8ea6534d70620b";
+            }}
+          >
+            <Image
+              style={{
+                width: winSize.width > 900 ? "70px" : "40px",
+                height: winSize.width > 900 ? "70px" : "40px",
+                resizeMode: "contain",
+              }}
+              source={{ uri: require("./assets/eth.svg.png") }}
+            ></Image>
+          </TouchableOpacity>
+
+          {/*Pulsante dona doge */}
+          <TouchableOpacity
+            style={{
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onPress={async () => {
+              let pay = window.open();
+              pay.location.href =
+                "https://www.bitcoinqrcodemaker.com/pay/?type=2&style=dogecoin&address=DE2QmoFh1Z98F5pZYEsMf4wYT8mjMapwD6";
+            }}
+          >
+            <Image
+              style={{
+                width: winSize.width > 900 ? "70px" : "40px",
+                height: winSize.width > 900 ? "70px" : "40px",
+                resizeMode: "cover",
+              }}
+              source={{ uri: require("./assets/dogecoin.svg") }}
+            ></Image>
+          </TouchableOpacity>
+        </View>
+
+        <View style={{ width: "100%", height: "10%" }}></View>
       </View>
-    </View>
+    </ScrollView>
   );
 };
 
