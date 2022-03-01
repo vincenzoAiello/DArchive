@@ -61,10 +61,13 @@ import { transform } from "streaming-iterables";
 import { FloatingMenu } from "react-native-floating-action-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import config from "./config";
+import { Web3Storage, File } from "web3.storage";
 
 let mutexFoto = false;
 let controllerFetch = new AbortController();
 let controllerFetchDownload = new AbortController();
+const web3s = new Web3Storage({ token: config.Web3StorageToken });
+
 const Home = ({ route, navigation }) => {
   //per dimensioni finestra in real time
   const winSize = useWindowDimensions();
@@ -251,12 +254,7 @@ const Home = ({ route, navigation }) => {
       let idFile;
 
       try {
-        /* let cid = await ipfs.then(async (i) => {
-              //aggiungo ad  ipfs lo zip
-              return await i.add(minizip.zip());
-            });*/
-
-        let json;
+        /*let json;
         if ((selectedResult[i].size / 1000000).toFixed(2) < 100) {
           json = await axios.request({
             url: "https://api.web3.storage/upload",
@@ -308,14 +306,14 @@ const Home = ({ route, navigation }) => {
                   });
                 },
                 url: /*"https://api.nft.storage/upload"*/
-          /* "https://api.web3.storage/car",
+        /* "https://api.web3.storage/car",
                 method: "POST",
                 signal: controllerFetch.signal,
                 headers: {
                   "content-Type": "application/car",
                   Authorization:*/
-          /*"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDgyNTY0MzFEQUYwMjU4MEFENTU5NDU2NDc0OURhQWJCZTY5NWUzRjkiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY0Mjg3NjE3NTM0OCwibmFtZSI6ImRzdG9yYWdlIn0.TeG3_YYxhZeWtzpPPNxoietTB0yezr_Pqvq30yjao5w",*/
-          /* "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDg3RTZiZDFhYTUyOUNmYWRmOURhMGY0NTNiMEE4ZDlGRDM3MjM2ZUIiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NDU0NTQ1NTcyNjUsIm5hbWUiOiJEUGhvdG8ifQ.WM4zuZ9UuGwODetDm37xMmpPLkCXXai-wAxw9Opf7Yk",
+        /*"Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDgyNTY0MzFEQUYwMjU4MEFENTU5NDU2NDc0OURhQWJCZTY5NWUzRjkiLCJpc3MiOiJuZnQtc3RvcmFnZSIsImlhdCI6MTY0Mjg3NjE3NTM0OCwibmFtZSI6ImRzdG9yYWdlIn0.TeG3_YYxhZeWtzpPPNxoietTB0yezr_Pqvq30yjao5w",*/
+        /* "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDg3RTZiZDFhYTUyOUNmYWRmOURhMGY0NTNiMEE4ZDlGRDM3MjM2ZUIiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NDU0NTQ1NTcyNjUsIm5hbWUiOiJEUGhvdG8ifQ.WM4zuZ9UuGwODetDm37xMmpPLkCXXai-wAxw9Opf7Yk",
                 },
                 data: carFile,
               });
@@ -333,7 +331,7 @@ const Home = ({ route, navigation }) => {
 
             json = cid.toString();*/
 
-          let BlobCifrato = new Blob([cifrato]);
+        /* let BlobCifrato = new Blob([cifrato]);
           const blockstore = new Blockstore();
           const { root: cid, out: iterable } = await pack({
             input: [{ path: "blob", content: BlobCifrato.stream() }],
@@ -345,11 +343,9 @@ const Home = ({ route, navigation }) => {
           const splitter = new TreewalkCarSplitter(car, targetSize);
 
           //li uso per la barra di caricamento
-          let counterCars = 0;
-          for await (const cid of splitter.cars()) {
-            counterCars++;
-          }
+          let counterCars = Math.floor(BlobCifrato.size / targetSize);
           let caricati = 0;
+          console.log(counterCars);
 
           const upload = transform(3, async function (smallCar) {
             const carParts = [];
@@ -376,8 +372,19 @@ const Home = ({ route, navigation }) => {
             setProgressValue({ value: caricati, total: counterCars });
           }
 
-          json = cid.toString();
-        }
+        json = cid.toString();
+         }*/
+
+        //carico file su web3.storage
+        let caricato = 0;
+        const file = new File([cifrato], "file");
+        const json = await web3s.put([file], {
+          onStoredChunk: (size) => {
+            //aggiorno lo stato del caricamento
+            caricato = Math.floor(caricato + size);
+            setProgressValue({ value: caricato, total: file.size });
+          },
+        });
 
         //aggiungo cid  a firebase
         let el = await addDoc(
@@ -533,7 +540,7 @@ const Home = ({ route, navigation }) => {
         .get(
           /* "https://ipfs.io/ipfs/" + cid */ "https://" +
             cid +
-            ".ipfs.dweb.link",
+            ".ipfs.dweb.link/file",
           {
             signal: controllerFetchDownload.signal,
             responseType: "arraybuffer",
@@ -946,8 +953,8 @@ const Home = ({ route, navigation }) => {
               >
                 {/*Testo progress bar */}
                 <Text style={{ fontWeight: 200, color: "white" }}>
-                  {((progressValue.value / progressValue.total) * 100).toFixed(
-                    2
+                  {Math.floor(
+                    (progressValue.value / progressValue.total) * 100
                   ) +
                     " / " +
                     100}
