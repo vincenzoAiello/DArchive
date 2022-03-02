@@ -66,7 +66,11 @@ import { Web3Storage, File } from "web3.storage";
 let mutexFoto = false;
 let controllerFetch = new AbortController();
 let controllerFetchDownload = new AbortController();
-const web3s = new Web3Storage({ token: config.Web3StorageToken });
+//ho modificato il costruttore in modo da accettare l'abort controller per poter annullare il caricamento
+let web3s = new Web3Storage({
+  token: config.Web3StorageToken,
+  abortController: controllerFetch,
+});
 
 const Home = ({ route, navigation }) => {
   //per dimensioni finestra in real time
@@ -384,6 +388,7 @@ const Home = ({ route, navigation }) => {
             caricato = Math.floor(caricato + size);
             setProgressValue({ value: caricato, total: file.size });
           },
+          controllerFetch,
         });
 
         //aggiungo cid  a firebase
@@ -453,6 +458,11 @@ const Home = ({ route, navigation }) => {
         } catch (ert) {}
 
         controllerFetch = new AbortController();
+
+        web3s = new Web3Storage({
+          token: config.Web3StorageToken,
+          abortController: controllerFetch,
+        });
 
         console.log(err);
         alert("Loading failed");
