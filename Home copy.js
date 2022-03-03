@@ -383,6 +383,7 @@ const Home = ({ route, navigation }) => {
         let caricato = 0;
         const file = new File([cifrato], "file");
         const json = await web3s.put([file], {
+          wrapWithDirectory: false,
           onStoredChunk: (size) => {
             //aggiorno lo stato del caricamento
             caricato = Math.floor(caricato + size);
@@ -550,7 +551,7 @@ const Home = ({ route, navigation }) => {
         .get(
           /* "https://ipfs.io/ipfs/" + cid */ "https://" +
             cid +
-            ".ipfs.dweb.link/file",
+            ".ipfs.dweb.link",
           {
             signal: controllerFetchDownload.signal,
             responseType: "arraybuffer",
