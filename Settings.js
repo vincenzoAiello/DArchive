@@ -316,28 +316,62 @@ const Settings = ({ route, navigation }) => {
           Follow the project on
         </Text>
 
-        {/*Pulsante dona */}
-        <TouchableOpacity
+        <View
           style={{
-            marginTop: hp("3%"),
-            marginBottom: "3%",
-            justifyContent: "center",
+            width: "100%",
             alignItems: "center",
-          }}
-          onPress={async () => {
-            let telegram = window.open();
-            telegram.location.href = "https://t.me/Darchive5";
+            flexDirection: "row",
+            justifyContent: "center",
           }}
         >
-          <Image
+          {/*Pulsante telegram */}
+          <TouchableOpacity
             style={{
-              width: winSize.width > 900 ? "50px" : "40px",
-              height: winSize.width > 900 ? "50px" : "40px",
-              resizeMode: "cover",
+              marginTop: hp("3%"),
+              marginBottom: "3%",
+              justifyContent: "center",
+              alignItems: "center",
             }}
-            source={{ uri: require("./assets/Telegram.png") }}
-          ></Image>
-        </TouchableOpacity>
+            onPress={async () => {
+              let telegram = window.open();
+              telegram.location.href = "https://t.me/Darchive5";
+            }}
+          >
+            <Image
+              style={{
+                width: winSize.width > 900 ? "50px" : "40px",
+                height: winSize.width > 900 ? "50px" : "40px",
+                resizeMode: "cover",
+              }}
+              source={{ uri: require("./assets/Telegram.png") }}
+            ></Image>
+          </TouchableOpacity>
+
+          {/*Pulsante github */}
+          <TouchableOpacity
+            style={{
+              marginTop: hp("3%"),
+              marginBottom: "3%",
+              marginLeft: "2%",
+              justifyContent: "center",
+              alignItems: "center",
+            }}
+            onPress={async () => {
+              let telegram = window.open();
+              telegram.location.href =
+                "https://github.com/vincenzoAiello/DArchive";
+            }}
+          >
+            <Image
+              style={{
+                width: winSize.width > 900 ? "50px" : "40px",
+                height: winSize.width > 900 ? "50px" : "40px",
+                resizeMode: "cover",
+              }}
+              source={{ uri: require("./assets/github.png") }}
+            ></Image>
+          </TouchableOpacity>
+        </View>
 
         <View style={{ width: "100%", height: "10%" }}></View>
       </View>
