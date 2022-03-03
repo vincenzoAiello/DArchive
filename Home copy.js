@@ -62,6 +62,7 @@ import { FloatingMenu } from "react-native-floating-action-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import config from "./config";
 import { Web3Storage, File } from "web3.storage";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 let mutexFoto = false;
 let controllerFetch = new AbortController();
@@ -1062,7 +1063,8 @@ const Home = ({ route, navigation }) => {
             justifyContent: "center",
             alignItems: "center",
           }}
-          onPress={() => {
+          onPress={async () => {
+            await AsyncStorage.clear();
             signOut(auth);
             navigation.push("LogIn");
           }}

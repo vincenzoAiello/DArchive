@@ -229,7 +229,6 @@ const Settings = ({ route, navigation }) => {
 
         <View
           style={{
-            marginBottom: "5%",
             width: "100%",
             alignItems: "center",
             flexDirection: "row",
@@ -250,8 +249,8 @@ const Settings = ({ route, navigation }) => {
           >
             <Image
               style={{
-                width: winSize.width > 900 ? "70px" : "40px",
-                height: winSize.width > 900 ? "70px" : "40px",
+                width: winSize.width > 900 ? "50px" : "40px",
+                height: winSize.width > 900 ? "50px" : "40px",
                 resizeMode: "cover",
               }}
               source={{ uri: require("./assets/btc.svg.png") }}
@@ -274,8 +273,8 @@ const Settings = ({ route, navigation }) => {
           >
             <Image
               style={{
-                width: winSize.width > 900 ? "70px" : "40px",
-                height: winSize.width > 900 ? "70px" : "40px",
+                width: winSize.width > 900 ? "50px" : "40px",
+                height: winSize.width > 900 ? "50px" : "40px",
                 resizeMode: "contain",
               }}
               source={{ uri: require("./assets/eth.svg.png") }}
@@ -296,14 +295,49 @@ const Settings = ({ route, navigation }) => {
           >
             <Image
               style={{
-                width: winSize.width > 900 ? "70px" : "40px",
-                height: winSize.width > 900 ? "70px" : "40px",
+                width: winSize.width > 900 ? "50px" : "40px",
+                height: winSize.width > 900 ? "50px" : "40px",
                 resizeMode: "cover",
               }}
               source={{ uri: require("./assets/dogecoin.svg") }}
             ></Image>
           </TouchableOpacity>
         </View>
+
+        {/*Testo follow the project on */}
+        <Text
+          style={{
+            color: "white",
+            fontWeight: "bold",
+            fontSize: "20px",
+            marginTop: "5%",
+          }}
+        >
+          Follow the project on
+        </Text>
+
+        {/*Pulsante dona */}
+        <TouchableOpacity
+          style={{
+            marginTop: hp("3%"),
+            marginBottom: "3%",
+            justifyContent: "center",
+            alignItems: "center",
+          }}
+          onPress={async () => {
+            let telegram = window.open();
+            telegram.location.href = "https://t.me/Darchive5";
+          }}
+        >
+          <Image
+            style={{
+              width: winSize.width > 900 ? "50px" : "40px",
+              height: winSize.width > 900 ? "50px" : "40px",
+              resizeMode: "cover",
+            }}
+            source={{ uri: require("./assets/Telegram.png") }}
+          ></Image>
+        </TouchableOpacity>
 
         <View style={{ width: "100%", height: "10%" }}></View>
       </View>

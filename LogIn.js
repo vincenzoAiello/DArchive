@@ -22,6 +22,7 @@ const {
 } = require("firebase/app-check");
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import config from "./config";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDfP0XCt3KrnuMtEvqGVlUtDu7ZyznV3nE",
@@ -51,13 +52,34 @@ const LogIn = ({ navigation }) => {
 
   let accedi = async () => {
     signInWithEmailAndPassword(auth, email, password)
-      .then((userCredential) => {
+      .then(async (userCredential) => {
+        //salvo per login automatico
+        await AsyncStorage.setItem(
+          "credentials",
+          JSON.stringify({
+            email: email,
+            password: password,
+          })
+        );
+
         navigation.push("Home", { email: email, password: password });
       })
       .catch((error) => {
         alert("User credentials not valid");
       });
   };
+
+  React.useEffect(async () => {
+    //se gia aveva eseguito l'accesso allora vado direttamente all'home
+    let credentials = await AsyncStorage.getItem("credentials");
+    let credentialsJson = await JSON.parse(credentials);
+
+    if (credentialsJson != undefined)
+      navigation.push("Home", {
+        email: credentialsJson.email,
+        password: credentialsJson.password,
+      });
+  }, []);
 
   return (
     <View
