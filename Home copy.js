@@ -387,7 +387,10 @@ const Home = ({ route, navigation }) => {
           onStoredChunk: (size) => {
             //aggiorno lo stato del caricamento
             caricato = Math.floor(caricato + size);
-            setProgressValue({ value: caricato, total: file.size });
+
+            if (caricato > file.size)
+              setProgressValue({ value: file.size, total: file.size });
+            else setProgressValue({ value: caricato, total: file.size });
           },
           controllerFetch,
         });
@@ -539,7 +542,11 @@ const Home = ({ route, navigation }) => {
     //Download foto
     if (value == 1) {
       let win = window.open();
-      win.window.document.write("Download of " + name + " in progress...");
+      win.window.document.write(
+        "<html>  <head>    <style>      html,      body {        height: 100%;        width: 100%;      }      .container {        align-items: center;        display: flex;        justify-content: center;        height: 100%;        width: 100%;      }    </style>  </head>  <body style='background-color: #191919; overflow: hidden'>    <div class='container'>      <img src='https://darchive5.web.app/static/media/logo.a7ce87a3.png' style='width: 250px' />      <div class='content'>        <p          id='textDownload'          style='color: white; font-family: Arial, Helvetica, sans-serif'        >          Download of " +
+          name +
+          " in progress...        </p>      </div>    </div>  </body></html>"
+      );
 
       //se chiudo la finestra eseguo abort del download
       win.window.addEventListener("beforeunload", (ev) => {
@@ -556,16 +563,14 @@ const Home = ({ route, navigation }) => {
             signal: controllerFetchDownload.signal,
             responseType: "arraybuffer",
             onDownloadProgress: (event) => {
-              win.window.document.body.innerHTML = "";
-              win.window.document.write(
+              win.document.getElementById("textDownload").innerHTML =
                 "Download of " +
-                  name +
-                  " in progress..." +
-                  " " +
-                  event.loaded +
-                  "/" +
-                  event.total
-              );
+                name +
+                " in progress..." +
+                " " +
+                event.loaded +
+                "/" +
+                event.total;
             },
           }
         )
@@ -599,9 +604,9 @@ const Home = ({ route, navigation }) => {
         .catch((err) => {
           //errore durante il download
           if (err.message != "canceled") {
-            win.window.document.body.innerHTML = "";
-            win.window.document.write("Error during downloading " + name);
             alert("Error during downloading " + name);
+            win.document.getElementById("textDownload").innerHTML =
+              "Error during downloading " + name;
           }
         });
     }
