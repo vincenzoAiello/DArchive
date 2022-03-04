@@ -105,6 +105,9 @@ const Home = ({ route, navigation }) => {
   //state apertura menu
   let [menuOpen, setMenuOpen] = React.useState(false);
 
+  //numero file da caricare
+  let [numFile, setNumFile] = React.useState({ current: 0, total: 0 });
+
   let aggiornaFoto = function (newPhotoId) {
     return new Promise(async (resolve, reject) => {
       if (!mutexFoto) {
@@ -223,11 +226,16 @@ const Home = ({ route, navigation }) => {
 
   //picker immagini
   let openImagePickerAsync = async (selectedResult) => {
+    //per alert conferma caricamento tutti i file
+    let errorLoading = false;
+
     for (let i = 0; i < selectedResult.length; i++) {
       //metto rotellina
       setReload(true);
       //metto overlay caricamneto
       setSpinnerVisibile(true);
+      //per segnare durante il caricamento quale file si sta caricando
+      setNumFile({ current: i + 1, total: selectedResult.length });
 
       let enc = new TextEncoder();
       //allungo la password inserendo k perchè deve essere almeno essere lunga 16 per generare la chiave
@@ -430,7 +438,6 @@ const Home = ({ route, navigation }) => {
         await aggiornaFoto(el.id)
           .then(() => {
             mutexFoto = false;
-            alert("File " + (i + 1) + " loaded successfully");
             setSpinnerVisibile(false);
             setReload(false);
           })
@@ -448,6 +455,8 @@ const Home = ({ route, navigation }) => {
       } catch (err) {
         //cosi annullo tutti i caricamenti in coda
         i = selectedResult.length;
+
+        errorLoading = true;
 
         try {
           //elimino da firebase
@@ -476,6 +485,7 @@ const Home = ({ route, navigation }) => {
         setReload(false);
       }
     }
+    if (!errorLoading) alert("All files have been uploaded successfully");
   };
 
   let createFolder = async () => {
@@ -968,6 +978,18 @@ const Home = ({ route, navigation }) => {
                   justifyContent: "center",
                 }}
               >
+                {/*Testo numero file in caricamento */}
+                <Text
+                  style={{
+                    fontWeight: 200,
+                    color: "white",
+                    fontWeight: "bold",
+                    marginBottom: "8%",
+                  }}
+                >
+                  {"Loading file " + numFile.current + " of " + numFile.total}
+                </Text>
+
                 {/*Testo progress bar */}
                 <Text style={{ fontWeight: 200, color: "white" }}>
                   {Math.floor(
