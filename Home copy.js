@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   FlatList,
   ScrollView,
+  Modal,
 } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -107,6 +108,12 @@ const Home = ({ route, navigation }) => {
 
   //numero file da caricare
   let [numFile, setNumFile] = React.useState({ current: 0, total: 0 });
+
+  //per gestire poi il modal del menu del file o cartella
+  let [elementoSelezionato, setElementoSelezionato] = React.useState({});
+
+  //per selezionare il modal da mostrare 1=file 2 =folders 0=niente
+  let [valueModal, setValueModal] = React.useState(0);
 
   let aggiornaFoto = function (newPhotoId) {
     return new Promise(async (resolve, reject) => {
@@ -223,6 +230,15 @@ const Home = ({ route, navigation }) => {
       });
     }
   }, [images]);
+
+  //eseguito quando cambia elemento selezionato
+  React.useEffect(() => {
+    //per gestire il click diretto sul file o sulla cartella, senza passare per il modal
+    if (elementoSelezionato.modalita == "diretta") {
+      if (elementoSelezionato.size != undefined) menuSelection(1);
+      else menuSelectionFolder(3);
+    }
+  }, [elementoSelezionato]);
 
   //picker immagini
   let openImagePickerAsync = async (selectedResult) => {
@@ -517,14 +533,14 @@ const Home = ({ route, navigation }) => {
   };
 
   //menu al click della foto
-  let menuSelection = async (value, idfoto, cid, type, name, size, data) => {
+  let menuSelection = async (value) => {
     //info file
     if (value == 4) {
       navigation.push("FileInfo", {
-        name: name,
-        size: size,
-        data: data,
-        cid: cid,
+        name: elementoSelezionato.name,
+        size: elementoSelezionato.size,
+        data: elementoSelezionato.data,
+        cid: elementoSelezionato.cid,
       });
     }
 
@@ -537,14 +553,16 @@ const Home = ({ route, navigation }) => {
           "Utenti",
           route.params.email.replaceAll(".", "DOT"),
           "Photos",
-          idfoto
+          elementoSelezionato.id
         )
       );
 
       //elimino dallo state
       let newImages = Object.assign([], images); //si fa così per creare una copia dell'array nello stato
       newImages.splice(
-        newImages.indexOf(newImages.filter((obj) => obj.id === idfoto)[0]),
+        newImages.indexOf(
+          newImages.filter((obj) => obj.id === elementoSelezionato.id)[0]
+        ),
         1
       );
       setImages(newImages);
@@ -555,7 +573,7 @@ const Home = ({ route, navigation }) => {
       let win = window.open();
       win.window.document.write(
         "<html>  <head>    <style>      html,      body {        height: 100%;        width: 100%;      }      .container {        align-items: center;        display: flex;        justify-content: center;        height: 100%;        width: 100%;      }    </style>  </head>  <body style='background-color: #191919; overflow: hidden'>    <div class='container'>      <img src='https://darchive5.web.app/static/media/logo.a7ce87a3.png' style='width: 250px' />      <div class='content'>        <p          id='textDownload'          style='color: white; font-family: Arial, Helvetica, sans-serif'        >          Download of " +
-          name +
+          elementoSelezionato.name +
           " in progress...        </p>      </div>    </div>  </body></html>"
       );
 
@@ -567,8 +585,8 @@ const Home = ({ route, navigation }) => {
 
       axios
         .get(
-          /* "https://ipfs.io/ipfs/" + cid */ "https://" +
-            cid +
+          /* "https://ipfs.io/ipfs/" + elementoSelezionato.cid */ "https://" +
+            elementoSelezionato.cid +
             ".ipfs.dweb.link",
           {
             signal: controllerFetchDownload.signal,
@@ -576,7 +594,7 @@ const Home = ({ route, navigation }) => {
             onDownloadProgress: (event) => {
               win.document.getElementById("textDownload").innerHTML =
                 "Download of " +
-                name +
+                elementoSelezionato.name +
                 " in progress..." +
                 " " +
                 event.loaded +
@@ -607,17 +625,38 @@ const Home = ({ route, navigation }) => {
             arrayBuffer.data
           );
 
-          //scarico il file
-          let blob = new Blob([decifrato], { type: type });
-          let url = URL.createObjectURL(blob);
-          win.location.href = url;
+          //se è un immagine o un video lo faccio visualizzare
+          //altrimenti lo scarico dandogli il nome del file giusto
+          if (
+            elementoSelezionato.type.includes("image") ||
+            elementoSelezionato.type.includes("video")
+          ) {
+            let blob = new Blob([decifrato], {
+              type: elementoSelezionato.type,
+            });
+            let url = URL.createObjectURL(blob);
+            win.location.href = url;
+          } else {
+            //scarico il file
+            var a = win.document.createElement("a");
+            let blob = new Blob([decifrato], {
+              type: elementoSelezionato.type,
+            });
+            let url = URL.createObjectURL(blob);
+            a.setAttribute("href", url);
+            a.setAttribute("download", elementoSelezionato.name);
+            win.document.body.append(a);
+            a.click();
+            win.window.URL.revokeObjectURL(url);
+            a.remove();
+          }
         })
         .catch((err) => {
           //errore durante il download
           if (err.message != "canceled") {
-            alert("Error during downloading " + name);
+            alert("Error during downloading " + elementoSelezionato.name);
             win.document.getElementById("textDownload").innerHTML =
-              "Error during downloading " + name;
+              "Error during downloading " + elementoSelezionato.name;
           }
         });
     }
@@ -628,11 +667,15 @@ const Home = ({ route, navigation }) => {
       if (newName != null && newName.trim() != "") {
         //rinomino oggetto in state
         let newImages = Object.assign([], images); //si fa così per creare una copia dell'array nello stato
-        let newObject = newImages.filter((obj) => obj.id === idfoto)[0];
+        let newObject = newImages.filter(
+          (obj) => obj.id === elementoSelezionato.id
+        )[0];
         let estenzione = newObject.name.slice(newObject.name.lastIndexOf("."));
         newObject.name = newName.trim() + estenzione;
         newImages[
-          newImages.indexOf(newImages.filter((obj) => obj.id === idfoto)[0])
+          newImages.indexOf(
+            newImages.filter((obj) => obj.id === elementoSelezionato.id)[0]
+          )
         ] = newObject;
         setImages(newImages);
 
@@ -643,7 +686,7 @@ const Home = ({ route, navigation }) => {
             "Utenti",
             route.params.email.replaceAll(".", "DOT"),
             "Photos",
-            idfoto
+            elementoSelezionato.id
           ),
           { name: newName.trim() + estenzione }
         );
@@ -652,7 +695,7 @@ const Home = ({ route, navigation }) => {
   };
 
   //menu al click della cartella
-  let menuSelectionFolder = async (id, value) => {
+  let menuSelectionFolder = async (value) => {
     //Elimina folder
     if (value == 2) {
       //controllo se la cartella contiene cartelle
@@ -664,7 +707,7 @@ const Home = ({ route, navigation }) => {
             route.params.email.replaceAll(".", "DOT"),
             "folders"
           ),
-          where("dir", "array-contains", id)
+          where("dir", "array-contains", elementoSelezionato.id)
         )
       );
 
@@ -677,7 +720,7 @@ const Home = ({ route, navigation }) => {
             route.params.email.replaceAll(".", "DOT"),
             "Photos"
           ),
-          where("dir", "array-contains", id)
+          where("dir", "array-contains", elementoSelezionato.id)
         )
       );
 
@@ -690,14 +733,16 @@ const Home = ({ route, navigation }) => {
             "Utenti",
             route.params.email.replaceAll(".", "DOT"),
             "folders",
-            id
+            elementoSelezionato.id
           )
         );
 
         //elimino dallo state
         let newFolders = Object.assign([], folders); //si fa così per creare una copia dell'array nello stato
         newFolders.splice(
-          newFolders.indexOf(newFolders.filter((obj) => obj.id === id)[0]),
+          newFolders.indexOf(
+            newFolders.filter((obj) => obj.id === elementoSelezionato.id)[0]
+          ),
           1
         );
         setFolders(newFolders);
@@ -708,7 +753,7 @@ const Home = ({ route, navigation }) => {
 
     //apro cartella
     if (value == 3) {
-      setStackDir((oldStack) => [...oldStack, id]);
+      setStackDir((oldStack) => [...oldStack, elementoSelezionato.id]);
 
       setImages([]);
     }
@@ -719,10 +764,14 @@ const Home = ({ route, navigation }) => {
       if (newName != null && newName.trim() != "") {
         //rinomino oggetto in state
         let newFolders = Object.assign([], folders); //si fa così per creare una copia dell'array nello stato
-        let newObject = newFolders.filter((obj) => obj.id === id)[0];
+        let newObject = newFolders.filter(
+          (obj) => obj.id === elementoSelezionato.id
+        )[0];
         newObject.name = newName.trim();
         newFolders[
-          newFolders.indexOf(newFolders.filter((obj) => obj.id === id)[0])
+          newFolders.indexOf(
+            newFolders.filter((obj) => obj.id === elementoSelezionato.id)[0]
+          )
         ] = newObject;
         setFolders(newFolders);
 
@@ -733,7 +782,7 @@ const Home = ({ route, navigation }) => {
             "Utenti",
             route.params.email.replaceAll(".", "DOT"),
             "folders",
-            id
+            elementoSelezionato.id
           ),
           { name: newName.trim() }
         );
@@ -745,67 +794,86 @@ const Home = ({ route, navigation }) => {
   const Item = ({ data, cid, id, name, size, type }) => {
     return (
       //Menu  compare alla pressione dell'immagine
-      <View
-        style={{
-          padding: winSize.width < 900 ? hp("2%") : hp("3%"),
+      <TouchableOpacity
+        onPress={() => {
+          setElementoSelezionato({
+            id: id,
+            cid: cid,
+            type: type,
+            name: name,
+            size: size,
+            data: data,
+            modalita: "diretta",
+          });
         }}
       >
-        <MenuProvider>
-          <Menu
-            onSelect={(value) =>
-              menuSelection(value, id, cid, type, name, size, data)
-            }
-          >
-            <MenuTrigger>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {/*Immagine */}
-                <Image
-                  source={require("./assets/file.png")}
-                  cacheKey={cid}
-                  style={{
-                    width: "90px",
-                    aspectRatio: 0.7,
-                    height: "110px",
-                    borderRadius: hp("5%"),
-                    alignSelf: "stretch",
-                  }}
-                />
-                <Text
-                  style={{
-                    color: "white",
-                    width: "25%",
-                    fontWeight: "bold",
-                    marginLeft: "3%",
-                  }}
-                >
-                  {name}
-                </Text>
-                <Text
-                  style={{
-                    color: "white",
-                    width: "25%",
-                    fontWeight: 200,
-                    marginLeft: "10%",
-                  }}
-                >
-                  {"Size : " +
-                    (size / 1000000).toFixed(2) +
-                    "MB Loading date: " +
-                    new Date(data).toLocaleString()}
-                </Text>
-              </View>
-            </MenuTrigger>
-            <MenuOptions>
-              <MenuOption value={1} text="Download" />
-              <MenuOption value={3} text="Rename" />
-              <MenuOption value={4} text="Info" />
-              <MenuOption value={2}>
-                <Text style={{ color: "red" }}>Delete</Text>
-              </MenuOption>
-            </MenuOptions>
-          </Menu>
-        </MenuProvider>
-      </View>
+        <View
+          style={{
+            padding: winSize.width < 900 ? hp("2%") : hp("3%"),
+          }}
+        >
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {/*Immagine */}
+            <Image
+              source={require("./assets/file.png")}
+              cacheKey={cid}
+              style={{
+                width: "90px",
+                aspectRatio: 0.7,
+                height: "110px",
+                borderRadius: hp("5%"),
+                alignSelf: "stretch",
+              }}
+            />
+
+            {/*nome file */}
+            <Text
+              style={{
+                color: "white",
+                width: "25%",
+                fontWeight: "bold",
+                marginLeft: "3%",
+              }}
+            >
+              {name}
+            </Text>
+
+            {/*size  + data*/}
+            <Text
+              style={{
+                color: "white",
+                width: "25%",
+                fontWeight: 200,
+                marginLeft: "10%",
+              }}
+            >
+              {"Size : " +
+                (size / 1000000).toFixed(2) +
+                "MB Loading date: " +
+                new Date(data).toLocaleString()}
+            </Text>
+
+            {/*Icona per aprire impostazioni file */}
+            <View style={{ flex: 1, alignItems: "flex-end" }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setElementoSelezionato({
+                    id: id,
+                    cid: cid,
+                    type: type,
+                    name: name,
+                    size: size,
+                    data: data,
+                  });
+                  setValueModal(1);
+                }}
+              >
+                <Icon name="dots-vertical" color={"white"} size={30} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -826,59 +894,69 @@ const Home = ({ route, navigation }) => {
   const Itemfolder = ({ id, data, name }) => {
     return (
       //Menu  compare alla pressione dell'immagine
-      <View
+      <TouchableOpacity
+        onPress={() => {
+          setElementoSelezionato({
+            id: id,
+            modalita: "diretta",
+          });
+        }}
         style={{
           padding: winSize.width < 900 ? hp("2%") : hp("3%"),
         }}
       >
-        <MenuProvider>
-          <Menu onSelect={(value) => menuSelectionFolder(id, value)}>
-            <MenuTrigger>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                {/*Immagine */}
-                <Image
-                  source={require("./assets/folder.png")}
-                  cacheKey={name}
-                  style={{
-                    width: "90px",
-                    aspectRatio: 0.7,
-                    height: "110px",
-                    borderRadius: hp("5%"),
-                    alignSelf: "stretch",
-                  }}
-                />
-                <Text
-                  style={{
-                    color: "white",
-                    width: "25%",
-                    fontWeight: "bold",
-                    marginLeft: "3%",
-                  }}
-                >
-                  {name}
-                </Text>
-                <Text
-                  style={{
-                    color: "white",
-                    width: "25%",
-                    fontWeight: 200,
-                    marginLeft: "10%",
-                  }}
-                >
-                  {"Creation date: " + new Date(data).toLocaleString()}
-                </Text>
-              </View>
-            </MenuTrigger>
-            <MenuOptions>
-              <MenuOption value={3} text="Open" />
-              <MenuOption value={1} text="Rename" />
-              <MenuOption value={2}>
-                <Text style={{ color: "red" }}>Delete</Text>
-              </MenuOption>
-            </MenuOptions>
-          </Menu>
-        </MenuProvider>
-      </View>
+        <View>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {/*Immagine */}
+            <Image
+              source={require("./assets/folder.png")}
+              cacheKey={name}
+              style={{
+                width: "90px",
+                aspectRatio: 0.7,
+                height: "110px",
+                borderRadius: hp("5%"),
+                alignSelf: "stretch",
+              }}
+            />
+            <Text
+              style={{
+                color: "white",
+                width: "25%",
+                fontWeight: "bold",
+                marginLeft: "3%",
+              }}
+            >
+              {name}
+            </Text>
+            <Text
+              style={{
+                color: "white",
+                width: "25%",
+                fontWeight: 200,
+                marginLeft: "10%",
+              }}
+            >
+              {"Creation date: " + new Date(data).toLocaleString()}
+            </Text>
+
+            {/*Icona per aprire impostazioni file */}
+            <View style={{ flex: 1, alignItems: "flex-end" }}>
+              <TouchableOpacity
+                onPress={() => {
+                  setElementoSelezionato({
+                    name: name,
+                    id: id,
+                  });
+                  setValueModal(2);
+                }}
+              >
+                <Icon name="dots-vertical" color={"white"} size={30} />
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -897,6 +975,178 @@ const Home = ({ route, navigation }) => {
         alignItems: "center",
       }}
     >
+      {/*Modal opzioni file */}
+      <Modal visible={valueModal == 1 ? true : false} transparent={true}>
+        <View
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#2b2b2b",
+              borderRadius: "5%",
+              width: winSize.width > 900 ? "50%" : "80%",
+              height: winSize.width > 900 ? "50%" : "60%",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {/*Nome file */}
+            <Text
+              style={{
+                textAlign: "center",
+                color: "white",
+                fontWeight: "100",
+                fontSize: "30px",
+                width: "80%",
+              }}
+            >
+              {elementoSelezionato.name}
+            </Text>
+
+            {/*Tasto download */}
+            <TouchableOpacity
+              onPress={() => {
+                menuSelection(1);
+                setValueModal(0);
+              }}
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+            >
+              <Text style={{ color: "white", fontSize: "25px" }}>Download</Text>
+            </TouchableOpacity>
+
+            {/*Tasto rename */}
+            <TouchableOpacity
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              onPress={() => {
+                menuSelection(3);
+                setValueModal(0);
+              }}
+            >
+              <Text style={{ color: "white", fontSize: "25px" }}>Rename</Text>
+            </TouchableOpacity>
+
+            {/*Tasto Info */}
+            <TouchableOpacity
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              onPress={() => {
+                menuSelection(4);
+                setValueModal(0);
+              }}
+            >
+              <Text style={{ color: "white", fontSize: "25px" }}>Info</Text>
+            </TouchableOpacity>
+
+            {/*Tasto delete */}
+            <TouchableOpacity
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              onPress={() => {
+                menuSelection(2);
+                setValueModal(0);
+              }}
+            >
+              <Text style={{ color: "red", fontSize: "25px" }}>Delete</Text>
+            </TouchableOpacity>
+
+            {/*Tasto chiudere modal */}
+            <TouchableOpacity
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              onPress={() => {
+                setValueModal(0);
+              }}
+            >
+              <Icon name="close" color={"#ff5c5c"} size={30} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/*Modal opzioni folders */}
+      <Modal visible={valueModal == 2 ? true : false} transparent={true}>
+        <View
+          style={{
+            backgroundColor: "rgba(0, 0, 0, 0.5)",
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            height: "100%",
+          }}
+        >
+          <View
+            style={{
+              backgroundColor: "#2b2b2b",
+              borderRadius: "5%",
+              width: winSize.width > 900 ? "50%" : "80%",
+              height: winSize.width > 900 ? "50%" : "60%",
+              alignItems: "center",
+              justifyContent: "center",
+            }}
+          >
+            {/*Nome file */}
+            <Text
+              style={{
+                textAlign: "center",
+                color: "white",
+                fontWeight: "100",
+                fontSize: "30px",
+                width: "80%",
+              }}
+            >
+              {elementoSelezionato.name}
+            </Text>
+
+            {/*Tasto Open */}
+            <TouchableOpacity
+              onPress={() => {
+                menuSelectionFolder(3);
+                setValueModal(0);
+              }}
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+            >
+              <Text style={{ color: "white", fontSize: "25px" }}>Open</Text>
+            </TouchableOpacity>
+
+            {/*Tasto rename */}
+            <TouchableOpacity
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              onPress={() => {
+                menuSelectionFolder(1);
+                setValueModal(0);
+              }}
+            >
+              <Text style={{ color: "white", fontSize: "25px" }}>Rename</Text>
+            </TouchableOpacity>
+
+            {/*Tasto delete */}
+            <TouchableOpacity
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              onPress={() => {
+                menuSelectionFolder(2);
+                setValueModal(0);
+              }}
+            >
+              <Text style={{ color: "red", fontSize: "25px" }}>Delete</Text>
+            </TouchableOpacity>
+
+            {/*Tasto chiudere modal */}
+            <TouchableOpacity
+              style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              onPress={() => {
+                setValueModal(0);
+              }}
+            >
+              <Icon name="close" color={"#ff5c5c"} size={30} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/*Floating menu */}
       <FloatingMenu
         iconColor={"#ff5c5c"}
         borderColor={"#ff5c5c"}

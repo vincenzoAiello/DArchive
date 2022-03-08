@@ -75,10 +75,20 @@ const LogIn = ({ navigation }) => {
     let credentialsJson = await JSON.parse(credentials);
 
     if (credentialsJson != undefined)
-      navigation.push("Home", {
-        email: credentialsJson.email,
-        password: credentialsJson.password,
-      });
+      signInWithEmailAndPassword(
+        auth,
+        credentialsJson.email,
+        credentialsJson.password
+      )
+        .then(async (userCredential) => {
+          navigation.push("Home", {
+            email: credentialsJson.email,
+            password: credentialsJson.password,
+          });
+        })
+        .catch((error) => {
+          alert("User credentials not valid");
+        });
   }, []);
 
   return (
