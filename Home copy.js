@@ -537,6 +537,7 @@ const Home = ({ route, navigation }) => {
     //info file
     if (value == 4) {
       navigation.push("FileInfo", {
+        email: route.params.email,
         name: elementoSelezionato.name,
         size: elementoSelezionato.size,
         data: elementoSelezionato.data,

@@ -93,10 +93,16 @@ const FileInfo = ({ route, navigation }) => {
         }
       />
 
-      {/*Titolo app */}
-      <Text style={{ color: "white", fontSize: hp("10%"), fontWeight: "500" }}>
-        DArchive
-      </Text>
+      {/*Logo */}
+      <Image
+        resizeMode="center"
+        style={{
+          width: winSize.width / 2,
+          height: "250px",
+          marginTop: "-20px",
+        }}
+        source={{ uri: require("./assets/logo.png") }}
+      ></Image>
 
       {/*Nome e cognome utente */}
       <Text
@@ -105,7 +111,7 @@ const FileInfo = ({ route, navigation }) => {
           fontSize:
             winSize.width < 900 ? winSize.width / 30 : winSize.width / 40,
           fontWeight: "400",
-          marginTop: hp("5%"),
+          marginTop: hp("-2%"),
         }}
       >
         {route.params.email}
