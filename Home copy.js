@@ -570,7 +570,12 @@ const Home = ({ route, navigation }) => {
 
     //Download foto
     if (value == 1) {
-      let win = window.open();
+      let win;
+
+      if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent))
+        win = window;
+      else win = window.open();
+
       win.window.document.write(
         "<html>  <head>    <style>      html,      body {        height: 100%;        width: 100%;      }      .container {        align-items: center;        display: flex;        justify-content: center;        height: 100%;        width: 100%;      }    </style>  </head>  <body style='background-color: #191919; overflow: hidden'>    <div class='container'>      <img src='https://darchive5.web.app/static/media/logo.a7ce87a3.png' style='width: 250px' />      <div class='content'>        <p          id='textDownload'          style='color: white; font-family: Arial, Helvetica, sans-serif'        >          Download of " +
           elementoSelezionato.name +
@@ -1148,6 +1153,7 @@ const Home = ({ route, navigation }) => {
 
       {/*Floating menu */}
       <FloatingMenu
+        position="top-left"
         iconColor={"#ff5c5c"}
         borderColor={"#ff5c5c"}
         backgroundDownColor={"#ff5c5c"}
