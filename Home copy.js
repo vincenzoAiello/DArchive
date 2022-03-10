@@ -10,6 +10,7 @@ import {
   FlatList,
   ScrollView,
   Modal,
+  Alert,
 } from "react-native";
 import { NavigationContainer } from "@react-navigation/native";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
@@ -190,6 +191,9 @@ const Home = ({ route, navigation }) => {
                   ? hp("20%")
                   : hp("25%"),
             };
+            try {
+              item.notPrivate = data.docs[i].data().notPrivate;
+            } catch (err) {}
 
             //se viene aggiunta una nuova immagine la metto all'inizio dellarray e poi esco dal for
             //in modo che carico solo le nuove immagini e non ripeteo il caricamento delle altre gia presenti
@@ -242,6 +246,11 @@ const Home = ({ route, navigation }) => {
 
   //picker immagini
   let openImagePickerAsync = async (selectedResult) => {
+    //alert per scelta upload files pubblici o privati
+    let response = confirm(
+      "Do you want upload private (encrypted) or public (not encrypted) files? ('OK' for private, 'Cancel' for public)"
+    );
+
     //per alert conferma caricamento tutti i file
     let errorLoading = false;
 
@@ -253,26 +262,32 @@ const Home = ({ route, navigation }) => {
       //per segnare durante il caricamento quale file si sta caricando
       setNumFile({ current: i + 1, total: selectedResult.length });
 
-      let enc = new TextEncoder();
-      //allungo la password inserendo k perchè deve essere almeno essere lunga 16 per generare la chiave
-      let passwordKey = route.params.password;
-      while (passwordKey.length < 16) passwordKey += "k";
+      //se è privato lo cifro altrimenti non lo cifro
+      let filebuffer;
+      if (response) {
+        let enc = new TextEncoder();
+        //allungo la password inserendo k perchè deve essere almeno essere lunga 16 per generare la chiave
+        let passwordKey = route.params.password;
+        while (passwordKey.length < 16) passwordKey += "k";
 
-      //genero key con la password
-      let key = await window.crypto.subtle.importKey(
-        "raw",
-        enc.encode(passwordKey),
-        "AES-GCM",
-        false,
-        ["encrypt", "decrypt"]
-      );
+        //genero key con la password
+        let key = await window.crypto.subtle.importKey(
+          "raw",
+          enc.encode(passwordKey),
+          "AES-GCM",
+          false,
+          ["encrypt", "decrypt"]
+        );
 
-      //cifro il file
-      let cifrato = await window.crypto.subtle.encrypt(
-        { name: "AES-GCM", iv: enc.encode(passwordKey) },
-        key,
-        await selectedResult[i].arrayBuffer()
-      );
+        //cifro il file
+        filebuffer = await window.crypto.subtle.encrypt(
+          { name: "AES-GCM", iv: enc.encode(passwordKey) },
+          key,
+          await selectedResult[i].arrayBuffer()
+        );
+      } else {
+        filebuffer = await selectedResult[i].arrayBuffer();
+      }
 
       //levo rotellina
       setReload(false);
@@ -406,7 +421,7 @@ const Home = ({ route, navigation }) => {
 
         //carico file su web3.storage
         let caricato = 0;
-        const file = new File([cifrato], "file");
+        const file = new File([filebuffer], "file");
         const json = await web3s.put([file], {
           wrapWithDirectory: false,
           onStoredChunk: (size) => {
@@ -446,6 +461,7 @@ const Home = ({ route, navigation }) => {
                 : selectedResult[i].type,
             size: selectedResult[i].size,
             dir: stackDir,
+            notPrivate: !response,
           }
         );
 
@@ -534,6 +550,15 @@ const Home = ({ route, navigation }) => {
 
   //menu al click della foto
   let menuSelection = async (value) => {
+    //copy link per file pubblici
+    if (value == 5) {
+      navigator.clipboard.writeText(
+        "https://" + elementoSelezionato.cid + ".ipfs.dweb.link"
+      );
+
+      alert("Link copied to clipboard");
+    }
+
     //info file
     if (value == 4) {
       navigation.push("FileInfo", {
@@ -797,7 +822,7 @@ const Home = ({ route, navigation }) => {
   };
 
   ///////////////RENDER IMMAGINI/////////////////////////////////////
-  const Item = ({ data, cid, id, name, size, type }) => {
+  const Item = ({ data, cid, id, name, size, type, notPrivate }) => {
     return (
       //Menu  compare alla pressione dell'immagine
       <TouchableOpacity
@@ -809,6 +834,7 @@ const Home = ({ route, navigation }) => {
             name: name,
             size: size,
             data: data,
+            notPrivate: notPrivate,
             modalita: "diretta",
           });
         }}
@@ -821,7 +847,11 @@ const Home = ({ route, navigation }) => {
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             {/*Immagine */}
             <Image
-              source={require("./assets/file.png")}
+              source={
+                notPrivate
+                  ? require("./assets/filePublic.png")
+                  : require("./assets/file.png")
+              }
               cacheKey={cid}
               style={{
                 width: "90px",
@@ -870,6 +900,7 @@ const Home = ({ route, navigation }) => {
                     name: name,
                     size: size,
                     data: data,
+                    notPrivate: notPrivate,
                   });
                   setValueModal(1);
                 }}
@@ -891,6 +922,7 @@ const Home = ({ route, navigation }) => {
       name={item.name}
       size={item.size}
       type={item.type}
+      notPrivate={item.notPrivate}
     />
   );
 
@@ -997,7 +1029,7 @@ const Home = ({ route, navigation }) => {
               backgroundColor: "#2b2b2b",
               borderRadius: "5%",
               width: winSize.width > 900 ? "50%" : "80%",
-              height: winSize.width > 900 ? "50%" : "60%",
+              height: winSize.width > 900 ? "70%" : "70%",
               alignItems: "center",
               justifyContent: "center",
             }}
@@ -1025,6 +1057,22 @@ const Home = ({ route, navigation }) => {
             >
               <Text style={{ color: "white", fontSize: "25px" }}>Download</Text>
             </TouchableOpacity>
+
+            {elementoSelezionato.notPrivate != undefined &&
+            elementoSelezionato.notPrivate == true ? (
+              //tasto copy link
+              <TouchableOpacity
+                onPress={() => {
+                  menuSelection(5);
+                  setValueModal(0);
+                }}
+                style={{ marginTop: winSize.width > 900 ? "3%" : "7%" }}
+              >
+                <Text style={{ color: "white", fontSize: "25px" }}>
+                  Copy link
+                </Text>
+              </TouchableOpacity>
+            ) : null}
 
             {/*Tasto rename */}
             <TouchableOpacity
