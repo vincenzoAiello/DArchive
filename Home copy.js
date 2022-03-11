@@ -50,7 +50,7 @@ var aesjs = require("aes-js");
 import Spinner from "react-native-loading-spinner-overlay";
 const axios = require("axios").default;
 import * as Progress from "react-native-progress";
-import { TreewalkCarSplitter } from "carbites/treewalk";
+/*import { TreewalkCarSplitter } from "carbites/treewalk";
 import { CarReader } from "@ipld/car";
 import { CarWriter } from "@ipld/car/lib/writer-browser";
 import { pack } from "ipfs-car/dist/esm/pack";
@@ -59,12 +59,12 @@ import { MemoryBlockStore } from "ipfs-car/dist/esm/blockstore/memory";
 import { NFTStorage } from "nft.storage";
 import { Blockstore } from "nft.storage/src/platform";
 import { BlockstoreCarReader } from "nft.storage/src/bs-car-reader";
-import { transform } from "streaming-iterables";
+import { transform } from "streaming-iterables";*/
 import { FloatingMenu } from "react-native-floating-action-menu";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import config from "./config";
 import { Web3Storage, File } from "web3.storage";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import copy from "copy-to-clipboard";
 
 let mutexFoto = false;
 let controllerFetch = new AbortController();
@@ -552,9 +552,7 @@ const Home = ({ route, navigation }) => {
   let menuSelection = async (value) => {
     //copy link per file pubblici
     if (value == 5) {
-      navigator.clipboard.writeText(
-        "https://" + elementoSelezionato.cid + ".ipfs.dweb.link"
-      );
+      copy("https://" + elementoSelezionato.cid + ".ipfs.dweb.link");
 
       alert("Link copied to clipboard");
     }
@@ -596,81 +594,144 @@ const Home = ({ route, navigation }) => {
 
     //Download foto
     if (value == 1) {
-      let win;
+      if (!elementoSelezionato.notPrivate) {
+        let win;
 
-      if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent))
-        win = window;
-      else win = window.open();
+        if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent))
+          win = window;
+        else win = window.open();
 
-      win.window.document.write(
-        "<html>  <head>    <style>      html,      body {        height: 100%;        width: 100%;      }      .container {        align-items: center;        display: flex;        justify-content: center;        height: 100%;        width: 100%;      }    </style>  </head>  <body style='background-color: #191919; overflow: hidden'>    <div class='container'>      <img src='https://darchive5.web.app/static/media/logo.a7ce87a3.png' style='width: 250px' />      <div class='content'>        <p          id='textDownload'          style='color: white; font-family: Arial, Helvetica, sans-serif'        >          Download of " +
-          elementoSelezionato.name +
-          " in progress...        </p>      </div>    </div>  </body></html>"
-      );
+        win.window.document.write(
+          "<html>  <head>    <style>      html,      body {        height: 100%;        width: 100%;      }      .container {        align-items: center;        display: flex;        justify-content: center;        height: 100%;        width: 100%;      }    </style>  </head>  <body style='background-color: #191919; overflow: hidden'>    <div class='container'>      <img src='https://darchive5.web.app/static/media/logo.a7ce87a3.png' style='width: 250px' />      <div class='content'>        <p          id='textDownload'          style='color: white; font-family: Arial, Helvetica, sans-serif'        >          Download of " +
+            elementoSelezionato.name +
+            " in progress...        </p>      </div>    </div>  </body></html>"
+        );
 
-      //se chiudo la finestra eseguo abort del download
-      win.window.addEventListener("beforeunload", (ev) => {
-        controllerFetchDownload.abort();
-        controllerFetchDownload = new AbortController();
-      });
+        //se chiudo la finestra eseguo abort del download
+        win.window.addEventListener("beforeunload", (ev) => {
+          controllerFetchDownload.abort();
+          controllerFetchDownload = new AbortController();
+        });
 
-      axios
-        .get(
-          /* "https://ipfs.io/ipfs/" + elementoSelezionato.cid */ "https://" +
-            elementoSelezionato.cid +
-            ".ipfs.dweb.link",
-          {
-            signal: controllerFetchDownload.signal,
-            responseType: "arraybuffer",
-            onDownloadProgress: (event) => {
+        axios
+          .get(
+            /* "https://ipfs.io/ipfs/" + elementoSelezionato.cid */ "https://" +
+              elementoSelezionato.cid +
+              ".ipfs.dweb.link",
+            {
+              signal: controllerFetchDownload.signal,
+              responseType: "arraybuffer",
+              onDownloadProgress: (event) => {
+                win.document.getElementById("textDownload").innerHTML =
+                  "Download of " +
+                  elementoSelezionato.name +
+                  " in progress..." +
+                  " " +
+                  event.loaded +
+                  "/" +
+                  event.total;
+              },
+            }
+          )
+          .then(async (arrayBuffer) => {
+            let enc = new TextEncoder();
+            //allungo la password inserendo k perchè deve essere almeno essere lunga 16 per generare la chiave
+            let passwordKey = route.params.password;
+            while (passwordKey.length < 16) passwordKey += "k";
+
+            //genero key con la password
+            let key = await window.crypto.subtle.importKey(
+              "raw",
+              enc.encode(passwordKey),
+              "AES-GCM",
+              false,
+              ["encrypt", "decrypt"]
+            );
+
+            //decifro il file
+            let decifrato = await window.crypto.subtle.decrypt(
+              { name: "AES-GCM", iv: enc.encode(passwordKey) },
+              key,
+              arrayBuffer.data
+            );
+
+            //se è un immagine o un video lo faccio visualizzare
+            //altrimenti lo scarico dandogli il nome del file giusto
+            if (
+              elementoSelezionato.type.includes("image") ||
+              elementoSelezionato.type.includes("video")
+            ) {
+              let blob = new Blob([decifrato], {
+                type: elementoSelezionato.type,
+              });
+              let url = URL.createObjectURL(blob);
+              win.location.href = url;
+            } else {
+              //scarico il file
+              var a = win.document.createElement("a");
+              let blob = new Blob([decifrato], {
+                type: elementoSelezionato.type,
+              });
+              let url = URL.createObjectURL(blob);
+              a.setAttribute("href", url);
+              a.setAttribute("download", elementoSelezionato.name);
+              win.document.body.append(a);
+              a.click();
+              win.window.URL.revokeObjectURL(url);
+              a.remove();
+            }
+          })
+          .catch((err) => {
+            //errore durante il download
+            if (err.message != "canceled") {
+              alert("Error during downloading " + elementoSelezionato.name);
               win.document.getElementById("textDownload").innerHTML =
-                "Download of " +
-                elementoSelezionato.name +
-                " in progress..." +
-                " " +
-                event.loaded +
-                "/" +
-                event.total;
-            },
-          }
-        )
-        .then(async (arrayBuffer) => {
-          let enc = new TextEncoder();
-          //allungo la password inserendo k perchè deve essere almeno essere lunga 16 per generare la chiave
-          let passwordKey = route.params.password;
-          while (passwordKey.length < 16) passwordKey += "k";
+                "Error during downloading " + elementoSelezionato.name;
+            }
+          });
+      } else {
+        let win;
 
-          //genero key con la password
-          let key = await window.crypto.subtle.importKey(
-            "raw",
-            enc.encode(passwordKey),
-            "AES-GCM",
-            false,
-            ["encrypt", "decrypt"]
-          );
+        if (/^((?!chrome|android).)*safari/i.test(navigator.userAgent))
+          win = window;
+        else win = window.open();
 
-          //decifro il file
-          let decifrato = await window.crypto.subtle.decrypt(
-            { name: "AES-GCM", iv: enc.encode(passwordKey) },
-            key,
-            arrayBuffer.data
-          );
+        win.window.document.write(
+          "<html>  <head>    <style>      html,      body {        height: 100%;        width: 100%;      }      .container {        align-items: center;        display: flex;        justify-content: center;        height: 100%;        width: 100%;      }    </style>  </head>  <body style='background-color: #191919; overflow: hidden'>    <div class='container'>      <img src='https://darchive5.web.app/static/media/logo.a7ce87a3.png' style='width: 250px' />      <div class='content'>        <p          id='textDownload'          style='color: white; font-family: Arial, Helvetica, sans-serif'        >          Download of " +
+            elementoSelezionato.name +
+            " in progress...        </p>      </div>    </div>  </body></html>"
+        );
 
-          //se è un immagine o un video lo faccio visualizzare
-          //altrimenti lo scarico dandogli il nome del file giusto
-          if (
-            elementoSelezionato.type.includes("image") ||
-            elementoSelezionato.type.includes("video")
-          ) {
-            let blob = new Blob([decifrato], {
-              type: elementoSelezionato.type,
-            });
-            let url = URL.createObjectURL(blob);
-            win.location.href = url;
-          } else {
+        //se chiudo la finestra eseguo abort del download
+        win.window.addEventListener("beforeunload", (ev) => {
+          controllerFetchDownload.abort();
+          controllerFetchDownload = new AbortController();
+        });
+
+        axios
+          .get(
+            /* "https://ipfs.io/ipfs/" + elementoSelezionato.cid */ "https://" +
+              elementoSelezionato.cid +
+              ".ipfs.dweb.link",
+            {
+              signal: controllerFetchDownload.signal,
+              responseType: "arraybuffer",
+              onDownloadProgress: (event) => {
+                win.document.getElementById("textDownload").innerHTML =
+                  "Download of " +
+                  elementoSelezionato.name +
+                  " in progress..." +
+                  " " +
+                  event.loaded +
+                  "/" +
+                  event.total;
+              },
+            }
+          )
+          .then(async (arrayBuffer) => {
             //scarico il file
             var a = win.document.createElement("a");
-            let blob = new Blob([decifrato], {
+            let blob = new Blob([arrayBuffer.data], {
               type: elementoSelezionato.type,
             });
             let url = URL.createObjectURL(blob);
@@ -680,16 +741,16 @@ const Home = ({ route, navigation }) => {
             a.click();
             win.window.URL.revokeObjectURL(url);
             a.remove();
-          }
-        })
-        .catch((err) => {
-          //errore durante il download
-          if (err.message != "canceled") {
-            alert("Error during downloading " + elementoSelezionato.name);
-            win.document.getElementById("textDownload").innerHTML =
-              "Error during downloading " + elementoSelezionato.name;
-          }
-        });
+          })
+          .catch((err) => {
+            //errore durante il download
+            if (err.message != "canceled") {
+              alert("Error during downloading " + elementoSelezionato.name);
+              win.document.getElementById("textDownload").innerHTML =
+                "Error during downloading " + elementoSelezionato.name;
+            }
+          });
+      }
     }
 
     //rinomina file
